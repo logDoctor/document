@@ -54,8 +54,13 @@
 ```
 의사의 진찰 과정                        Log Doctor의 진단 과정
 ────────────                           ────────────
-① 환자가 온다                          ① TimerTrigger가 깨어남
-   └ "어디가 아프세요?"                    └ should_i_run? → Provider에 폴링
+① 환자가 처음 온다 (초진)               ① 테넌트 등록 (초진 — 자동)
+   └ "첫 방문이시네요, 기초검사 합시다"      └ Cosmos에 진찰 이력 없음 → 자동 초진 실행
+
+   또는                                  또는
+
+   환자가 다시 온다 (재진)               ① 관리자가 [진찰 실행] 버튼 클릭 (재진 — 수동)
+   └ "다시 검진받으러 왔습니다"              └ Teams 대시보드 → Queue 메시지 → Agent
 
 ② 기초 검사 (혈압, 체온)                ② 로그 수집 (Log Collector)
    └ 표준 장비로 수치화                    └ LAW에서 KQL로 수집 → ld_ 스키마로 정규화
@@ -121,26 +126,63 @@ log-doctor-client-back/
 
 ## 4. 실행 흐름: 두 개의 독립 프로세스
 
-### 4-1. 진찰 프로세스 (Diagnosis)
+### 4-1. 초진 — 자동 진찰 (First Diagnosis)
+
+테넌트 등록/Agent 핸드셰이크 직후, Cosmos에 진찰 이력이 없으면 자동 실행됩니다.
 
 ```mermaid
 sequenceDiagram
-    participant Timer as Diagnosis TimerTrigger (1h)
+    participant Agent as Client Agent
+    participant PB as Provider Backend
+    participant Cosmos as Cosmos DB
     participant Runner as DiagnosisRunner
     participant LAW as 고객사 LAW
-    participant PB as Provider Backend
 
-    Timer->>Runner: 진찰 시작
-    Runner->>LAW: KQL로 로그 수집 (Collector)
+    Note over Agent, Cosmos: 핸드셰이크 완료 직후
+    Agent->>PB: handshake 완료
+    PB->>Cosmos: 이 테넌트의 진찰 이력 조회
+    Cosmos-->>PB: 없음 (신규)
+    PB-->>Agent: 초진 필요 (run_diagnosis: true)
+
+    Note over Agent, LAW: 자동 초진 실행
+    Agent->>Runner: 초진 시작
+    Runner->>LAW: KQL로 로그 수집
     LAW-->>Runner: 원본 로그
-    Runner->>Runner: 정규화 (Normalizer)
-    Runner->>Runner: 분류 (Classifier)
-    Runner->>PB: POST /diagnosis-results (진찰 결과 전송)
-    Note over PB: 진찰 결과 저장 (Cosmos DB)
-    Note over Runner: 여기서 끝. 엔진은 실행하지 않는다.
+    Runner->>Runner: 정규화 + 분류
+    Runner->>PB: POST /diagnosis-results
+    PB->>Cosmos: 초진 결과 저장
+    Note over PB: Teams 대시보드에 초진 결과 표시
 ```
 
-### 4-2. 엔진 프로세스 (Engines)
+### 4-2. 재진 — 버튼 클릭 진찰 (On-Demand Diagnosis)
+
+관리자가 Teams 대시보드에서 **[진찰 실행]** 버튼을 누르면 실행됩니다.
+
+```mermaid
+sequenceDiagram
+    participant Admin as 관리자 (Teams)
+    participant PB as Provider Backend
+    participant Queue as Azure Queue
+    participant Agent as Client Agent
+    participant Runner as DiagnosisRunner
+    participant LAW as 고객사 LAW
+
+    Admin->>PB: [진찰 실행] 버튼 클릭
+    PB->>Queue: 진찰 요청 메시지 전송
+    Queue->>Agent: QueueTrigger 깨어남
+
+    Agent->>Runner: 재진 시작
+    Runner->>LAW: KQL로 로그 수집
+    LAW-->>Runner: 원본 로그
+    Runner->>Runner: 정규화 + 분류
+    Runner->>PB: POST /diagnosis-results
+    PB-->>Admin: 진찰 완료 알림
+    Note over Admin: Teams 대시보드에서 결과 확인
+```
+
+### 4-3. 엔진 프로세스 (Engines)
+
+엔진은 진찰과 별개로 각자의 주기에 따라 독립 실행됩니다.
 
 ```mermaid
 sequenceDiagram
@@ -170,14 +212,16 @@ azure_client = AzureClient()
 provider_client = ProviderClient()
 
 # ──────────────────────────────────────────────
-# 🔵 진찰 트리거: 1시간마다 실행. 분석만 하고 결과만 저장.
+# 🔵 진찰: On-Demand (버튼 클릭 → Queue) + 초진 자동
 # ──────────────────────────────────────────────
-@app.timer_trigger(arg_name="mytimer", schedule="0 0 * * * *")
-async def diagnosis_trigger(mytimer: func.TimerRequest):
+@app.queue_trigger(arg_name="msg", queue_name="diagnosis-requests",
+                   connection="AzureWebJobsStorage")
+async def diagnosis_trigger(msg: func.QueueMessage):
     """
-    진찰 전용 트리거.
-    LAW에서 로그를 수집 → 정규화 → 분류 → Provider에 결과 저장.
-    엔진은 실행하지 않는다.
+    진찰 전용 트리거 (On-Demand).
+    - 초진: handshake 시 Provider가 Cosmos 조회 → 이력 없으면 Queue에 메시지 전송
+    - 재진: 관리자가 Teams [진찰 실행] 버튼 → Provider → Queue
+    결과: LAW 수집 → 정규화 → 분류 → Provider에 결과만 저장.
     """
     await perform_idempotent_handshake()
 

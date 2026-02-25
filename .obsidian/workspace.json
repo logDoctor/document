@@ -185,11 +185,16 @@
   },
   "active": "d8b87b2171012970",
   "lastOpenFiles": [
+    "logging/01-로그란-무엇인가.md",
+    "azure/rbac/README.md",
+    "azure/teams-app/README.md",
+    "azure/log-analytics/README.md",
+    "azure/projects/log-diagnosis-implementation.md",
+    "azure/projects/onboarding-architecture.md",
     "presentations/log-doctor-overview.md",
     "azure/projects/presentations/log-doctor-overview.md",
     "presentations",
     "무제",
-    "azure/projects/log-diagnosis-implementation.md",
     "azure/projects/presentations",
     "azure/projects/log-standardization.md"
   ]
