@@ -78,6 +78,74 @@ graph TB
     ClientFn -->|"⑰ 리소스 분석"| CustomerRes
 ```
 
+### 시퀀스 다이어그램 (시간 순서)
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 사용자
+    participant Front as Teams Frontend
+    participant ClientEntra as Client Entra ID<br/>(고객 테넌트)
+    participant Provider as Provider Backend
+    participant ProviderEntra as Provider Entra ID<br/>(우리 앱)
+    participant Cosmos as Cosmos DB
+    participant ARM as ARM API
+    participant Agent as Client Agent<br/>(Azure Functions)
+    participant LAW as LAW
+
+    Note over User, LAW: 🔵 Phase 1 — SSO 로그인 + 테넌트 등록
+
+    User->>Front: Teams 앱 접속
+    Front->>ClientEntra: ① SSO 토큰 요청 (Teams SDK)
+    ClientEntra-->>Front: ② SSO 토큰 반환 (tid, oid, name)
+    Front->>Provider: ③ POST /tenant (SSO 토큰 전달)
+    Provider->>Provider: SSO 토큰 디코딩 → tenantId 추출
+    Provider->>Cosmos: ⑤ tenant 저장 (tenants 컬렉션)
+    Provider-->>Front: ④ 등록 완료 응답
+
+    Note over User, LAW: 🟠 Phase 2 — OBO 토큰 교환 + 구독 조회
+
+    Front->>Provider: ⑧ GET /subscriptions (SSO 토큰)
+    Provider->>ProviderEntra: ⑥ OBO 토큰 교환 요청
+    Note right of Provider: grant_type: jwt-bearer<br/>assertion: SSO 토큰<br/>scope: management.azure.com
+    ProviderEntra-->>Provider: ⑦ OBO 액세스 토큰 반환
+    Provider->>ARM: ⑨ GET /subscriptions (OBO 토큰)
+    ARM-->>Provider: 구독 목록 반환
+    Provider-->>Front: ⑩ 구독 목록 응답
+
+    Note over User, LAW: 🟢 Phase 3 — 구독 선택 + 저장
+
+    Front->>Front: 구독 목록 UI 표시
+    User->>Front: 구독 선택
+    Front->>Provider: ⑪ POST /subscriptions/select
+    Provider->>Cosmos: ⑫ 선택 구독 저장 (subscriptions 컬렉션)
+    Provider-->>Front: 구독 연동 완료
+
+    Note over User, LAW: 🟣 Phase 4 — Agent 배포 + Handshake
+
+    Provider-->>Front: ⑬ Bicep 템플릿 배포 안내 표시
+    User->>User: 고객사 Azure에 Bicep 템플릿 배포
+    Note over Agent: Azure Functions 생성됨<br/>+ Managed Identity 자동 생성
+
+    Agent->>Provider: ⑭ POST /agents/handshake
+    Note right of Agent: tenantId, subscriptionId,<br/>agentId, version, capabilities
+    Provider->>Cosmos: Agent 등록 (agents 컬렉션)
+    Provider-->>Agent: ⑮ 등록 완료 + 초기 정책
+
+    Note over User, LAW: 🔴 Phase 5 — 정상 운영
+
+    loop Timer Trigger (30분 주기)
+        Agent->>Provider: should_i_run 폴링
+        Provider-->>Agent: 실행 승인 + 정책
+        Agent->>LAW: ⑯ KQL로 로그 분석
+        Agent->>Provider: 리포트 전송
+    end
+
+    Note over Provider, Agent: Queue Trigger (즉시 실행)
+    Provider->>Agent: Queue 메시지 (진단 요청 등)
+    Agent->>LAW: 즉시 분석 실행
+    Agent->>Provider: 결과 전송
+```
+
 ---
 
 ## 2. 테넌트 등록 흐름 (Tenant Registration Flow)
