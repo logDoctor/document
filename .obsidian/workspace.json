@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "azure/projects/presentations/log-doctor-overview.md",
+                "file": "azure/projects/onboarding-architecture.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "log-doctor-overview"
+              "title": "onboarding-architecture"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "azure/projects/presentations/log-doctor-overview.md",
+                "file": "azure/projects/onboarding-architecture.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "log-doctor-overview 의 백링크"
+              "title": "onboarding-architecture 의 백링크"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "azure/projects/presentations/log-doctor-overview.md",
+                "file": "azure/projects/onboarding-architecture.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "log-doctor-overview 의 나가는 링크"
+              "title": "onboarding-architecture 의 나가는 링크"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "azure/projects/presentations/log-doctor-overview.md",
+                "file": "azure/projects/onboarding-architecture.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "log-doctor-overview 의 개요"
+              "title": "onboarding-architecture 의 개요"
             }
           }
         ]
@@ -185,8 +185,11 @@
   },
   "active": "d8b87b2171012970",
   "lastOpenFiles": [
-    "azure/projects/log-diagnosis-implementation.md",
+    "presentations/log-doctor-overview.md",
     "azure/projects/presentations/log-doctor-overview.md",
+    "presentations",
+    "무제",
+    "azure/projects/log-diagnosis-implementation.md",
     "azure/projects/presentations",
     "azure/projects/log-standardization.md"
   ]

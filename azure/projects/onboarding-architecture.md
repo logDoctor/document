@@ -56,7 +56,19 @@ graph TB
     ClientFn -->|"⑬ 리소스 분석"| CustomerRes
 ```
 
+## 고쳐야할거
+1. 토큰 발급 과정 tems sdk 왔다갔다 하는걸 1, 2 로 만들어야됨
+2. 4번 프론트에서 리스폰스를 받아야됨
+3. get subscripetions 구독 목록 조회 수정 그때 
+4. entra id 는 무조건 두개 있어야됨 우리꺼, 클라이언트 꺼
+5. 9, 8, 7 로직이 빠져 있음 (구독이 어떻게 되어 있는지)
+
+
+
+
+
 ---
+
 
 ## 2. 테넌트 등록 흐름 (Tenant Registration Flow)
 
