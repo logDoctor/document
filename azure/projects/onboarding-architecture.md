@@ -7,17 +7,17 @@
 
 ## 1. 전체 시스템 아키텍처
 
-Teams Frontend, Provider Backend, Entra ID, Client Agent 간의 전체 관계를 보여줍니다.
+Teams Frontend, Provider Backend, **두 개의 Entra ID**, Client Agent 간의 전체 관계를 보여줍니다.
 
 ```mermaid
 graph TB
     subgraph "Microsoft 365"
         Teams["Teams App"]
-        Front["Frontend (React)"]
+        Front["Frontend - React"]
     end
 
     subgraph "Provider Cloud"
-        Provider["Provider Backend (FastAPI)"]
+        Provider["Provider Backend - FastAPI"]
         CosmosDB["Cosmos DB"]
         subgraph "Cosmos 컬렉션"
             TenantTable["tenants"]
@@ -26,8 +26,12 @@ graph TB
         end
     end
 
-    subgraph "Microsoft Identity"
-        EntraID["Entra ID"]
+    subgraph "Provider Entra ID (우리 앱 등록)"
+        ProviderEntra["Entra ID - Provider"]
+    end
+
+    subgraph "Client Entra ID (고객사 테넌트)"
+        ClientEntra["Entra ID - Client"]
     end
 
     subgraph "Azure Management"
@@ -36,39 +40,45 @@ graph TB
     end
 
     subgraph "고객 Azure 환경"
-        ClientFn["Client Functions (Agent)"]
+        ClientFn["Client Functions - Agent"]
         LAW["Log Analytics Workspace"]
         CustomerRes["고객 Azure 리소스"]
     end
 
-    Teams --> Front
-    Front -->|"① SSO 토큰 발급"| EntraID
-    Front -->|"② POST /tenant + SSO 토큰"| Provider
-    Provider -->|"③ tenantId 검증 + 저장"| CosmosDB
-    Provider -->|"④ OBO 토큰 교환"| EntraID
-    EntraID -->|"⑤ OBO 액세스 토큰 반환"| Provider
-    Provider -->|"⑥ 구독 목록 조회"| ARM
-    ARM --> SubList
+    %% SSO 토큰 발급: Teams SDK 왕복
+    Front -->|"① SSO 토큰 요청 (Teams SDK)"| ClientEntra
+    ClientEntra -->|"② SSO 토큰 반환 (tid, oid)"| Front
 
-    ClientFn -->|"⑩ handshake + 등록"| Provider
-    Provider -->|"⑪ 정책 배포"| ClientFn
-    ClientFn -->|"⑫ 로그 분석"| LAW
-    ClientFn -->|"⑬ 리소스 분석"| CustomerRes
+    %% 테넌트 등록
+    Front -->|"③ POST /tenant + SSO 토큰"| Provider
+    Provider -->|"④ tenantId 검증 + 등록 응답"| Front
+
+    %% Cosmos 저장
+    Provider -->|"⑤ tenant 저장"| CosmosDB
+
+    %% OBO 토큰 교환
+    Provider -->|"⑥ OBO 토큰 교환 요청"| ProviderEntra
+    ProviderEntra -->|"⑦ OBO 액세스 토큰 반환"| Provider
+
+    %% 구독 조회
+    Front -->|"⑧ GET /subscriptions"| Provider
+    Provider -->|"⑨ ARM API 구독 목록 조회 (OBO 토큰)"| ARM
+    ARM --> SubList
+    Provider -->|"⑩ 구독 목록 응답"| Front
+
+    %% 구독 선택 + 저장
+    Front -->|"⑪ POST /subscriptions/select"| Provider
+    Provider -->|"⑫ 선택 구독 저장"| CosmosDB
+
+    %% Agent 배포 + Handshake
+    Provider -->|"⑬ 고객 Azure 템플릿 배포 안내"| Front
+    ClientFn -->|"⑭ handshake + 등록"| Provider
+    Provider -->|"⑮ 정책 배포"| ClientFn
+    ClientFn -->|"⑯ 로그 분석"| LAW
+    ClientFn -->|"⑰ 리소스 분석"| CustomerRes
 ```
 
-## 고쳐야할거
-1. 토큰 발급 과정 tems sdk 왔다갔다 하는걸 1, 2 로 만들어야됨
-2. 4번 프론트에서 리스폰스를 받아야됨
-3. get subscripetions 구독 목록 조회 수정 그때 
-4. entra id 는 무조건 두개 있어야됨 우리꺼, 클라이언트 꺼
-5. 9, 8, 7 로직이 빠져 있음 (구독이 어떻게 되어 있는지)
-
-
-
-
-
 ---
-
 
 ## 2. 테넌트 등록 흐름 (Tenant Registration Flow)
 
@@ -447,22 +457,27 @@ stateDiagram-v2
 
 ```mermaid
 graph TD
-    S1["① Teams에서 SSO 로그인"] --> S2["② POST /tenant (SSO 토큰 전달)"]
-    S2 --> S3["③ tenantId 검증 + Cosmos에 저장"]
-    S3 --> S4["④ SSO → OBO 변환 (Entra ID)"]
-    S4 --> S5["⑤ OBO 토큰 수령"]
-    S5 --> S6["⑥ ARM API로 구독 목록 조회"]
-    S6 --> S7["⑦ 구독 선택 + 저장"]
-    S7 --> S8["⑧ 고객 Azure 템플릿 배포 (Bicep)"]
-    S8 --> S9["⑨ Agent 생성 (Azure Functions + Managed Identity)"]
-    S9 --> S10["⑩ Agent → Provider handshake"]
-    S10 --> S11["⑪ Agent 등록 완료 (agents 컬렉션)"]
-    S11 --> S12["⑫ Timer/Queue Trigger로 정상 운영"]
-    S12 --> S13["⑬ 구독 내 리소스 분석 시작"]
+    S1["① Front → Client Entra ID: SSO 토큰 요청"] --> S2["② Client Entra ID → Front: SSO 토큰 반환"]
+    S2 --> S3["③ Front → Provider: POST /tenant + SSO 토큰"]
+    S3 --> S4["④ Provider → Front: tenantId 검증 + 등록 응답"]
+    S4 --> S5["⑤ Provider → Cosmos: tenant 저장"]
+    S5 --> S6["⑥ Provider → Provider Entra ID: OBO 토큰 교환"]
+    S6 --> S7["⑦ Provider Entra ID → Provider: OBO 토큰 반환"]
+    S7 --> S8["⑧ Front → Provider: GET /subscriptions"]
+    S8 --> S9["⑨ Provider → ARM: 구독 목록 조회 (OBO 토큰)"]
+    S9 --> S10["⑩ Provider → Front: 구독 목록 응답"]
+    S10 --> S11["⑪ Front → Provider: POST /subscriptions/select"]
+    S11 --> S12["⑫ Provider → Cosmos: 선택 구독 저장"]
+    S12 --> S13["⑬ 고객 Azure 템플릿 배포 (Bicep)"]
+    S13 --> S14["⑭ Agent → Provider: handshake + 등록"]
+    S14 --> S15["⑮ Provider → Agent: 정책 배포"]
+    S15 --> S16["⑯ Agent → LAW: 로그 분석"]
+    S16 --> S17["⑰ Agent → 고객 리소스: 리소스 분석"]
 
     style S1 fill:#4CAF50,color:#fff
-    style S4 fill:#FF5722,color:#fff
+    style S6 fill:#FF5722,color:#fff
     style S8 fill:#2196F3,color:#fff
-    style S10 fill:#9C27B0,color:#fff
-    style S13 fill:#FF9800,color:#fff
+    style S13 fill:#9C27B0,color:#fff
+    style S14 fill:#9C27B0,color:#fff
+    style S17 fill:#FF9800,color:#fff
 ```
