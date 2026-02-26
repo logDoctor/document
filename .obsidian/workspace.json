@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "azure/projects/log-diagnosis-implementation.md",
+                "file": "projects/application-insights.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "log-diagnosis-implementation 의 백링크"
+              "title": "application-insights 의 백링크"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "azure/projects/log-diagnosis-implementation.md",
+                "file": "projects/application-insights.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "log-diagnosis-implementation 의 나가는 링크"
+              "title": "application-insights 의 나가는 링크"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "azure/projects/log-diagnosis-implementation.md",
+                "file": "projects/application-insights.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "log-diagnosis-implementation 의 개요"
+              "title": "application-insights 의 개요"
             }
           }
         ]
@@ -185,23 +185,19 @@
   },
   "active": "d8b87b2171012970",
   "lastOpenFiles": [
-    "projects/diagnosis-framework-normalization.md",
-    "projects/application-insights.md",
-    "projects/diagnosis-app-level.md",
-    "projects/diagnosis-benchmarks.md",
-    "projects/log-diagnosis-implementation.md",
-    "projects/log-standardization.md",
-    "projects/system_architecture_and_security.md",
-    "projects/1-managed-identity-setup.md",
-    "projects/onboarding-architecture.md",
-    "azure/projects/diagnosis-app-level.md",
-    "azure/projects",
     "azure/projects/log-diagnosis-implementation.md",
-    "projects/log-doctor-plan.md",
+    "projects/system_architecture_and_security.md",
     "projects/README.md",
-    "projects/3-security-architecture.md",
-    "projects/2-backend-config.md",
+    "projects/onboarding-architecture.md",
+    "projects/log-standardization.md",
+    "projects/log-doctor-plan.md",
+    "projects/log-diagnosis-implementation.md",
+    "projects/diagnosis-framework-normalization.md",
+    "projects/diagnosis-benchmarks.md",
+    "projects/diagnosis-app-level.md",
+    "projects/application-insights.md",
     "projects",
+    "logging/(system) 01-로그란-무엇인가.md",
     "azure/projects/log-standardization.md",
     "azure/projects/onboarding-architecture.md",
     "logging/01-로그란-무엇인가.md",
